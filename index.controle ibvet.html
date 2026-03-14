@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBVET - Controle Operacional</title>
+    
+    <!-- Fonte Corporativa: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Configuração do Tailwind -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        sidebar: { light: '#ffffff', dark: '#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos Base e Scrollbar Clean */
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
+        .dark body { background-color: #0f172a; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Sistema de Páginas (SPA) */
+        .page-section { display: none; animation: fadeIn 0.3s ease-out; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Cores de Status Padrão SaaS */
+        .status-delivered { background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+        .status-production { background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        .status-requested { background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .status-pending { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        
+        .dark .status-delivered { background-color: rgba(5, 150, 105, 0.1); color: #34d399; border-color: rgba(5, 150, 105, 0.2); }
+        .dark .status-production { background-color: rgba(217, 119, 6, 0.1); color: #fbbf24; border-color: rgba(217, 119, 6, 0.2); }
+        .dark .status-requested { background-color: rgba(37, 99, 235, 0.1); color: #60a5fa; border-color: rgba(37, 99, 235, 0.2); }
+        .dark .status-pending { background-color: rgba(220, 38, 38, 0.1); color: #f87171; border-color: rgba(220, 38, 38, 0.2); }
+
+        /* Notificações Profissionais */
+        .notification { 
+            position: fixed; top: 24px; right: 24px; padding: 16px; min-width: 300px;
+            border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 1050; transform: translateX(150%); opacity: 0; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; align-items: flex-start; gap: 12px; font-weight: 500; font-size: 0.875rem;
+        }
+        .notification.show { transform: translateX(0); opacity: 1; }
+        .notification.success { background: #ffffff; color: #1e293b; border-left: 4px solid #10B981; }
+        .notification.error { background: #ffffff; color: #1e293b; border-left: 4px solid #EF4444; }
+        .notification.warning { background: #ffffff; color: #1e293b; border-left: 4px solid #F59E0B; }
+        .dark .notification { background: #1e293b; color: #f8fafc; border-right: 1px solid #334155; border-top: 1px solid #334155; border-bottom: 1px solid #334155; }
+        
+        /* Modais Clean */
+        .modal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background-color: rgba(15, 23, 42, 0.5); z-index: 1000; justify-content: center; align-items: center; 
+        }
+        .modal.flex { display: flex; animation: fadeInModal 0.2s ease-out; }
+        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { 
+            background: #ffffff; border-radius: 12px; width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); transform: scale(0.95); animation: zoomIn 0.2s ease-out forwards;
+        }
+        .dark .modal-content { background: #1e293b; border: 1px solid #334155; }
+        @keyframes zoomIn { to { transform: scale(1); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e2e8f0; }
+        .dark .modal-header { border-bottom-color: #334155; }
+        .modal-title { font-size: 1.125rem; font-weight: 600; color: #0f172a; }
+        .dark .modal-title { color: #f8fafc; }
+        .modal-close { cursor: pointer; color: #64748b; transition: color 0.2s; padding: 0.25rem; }
+        .modal-close:hover { color: #0f172a; }
+        .dark .modal-close:hover { color: #f8fafc; }
+        .modal-body { padding: 1.5rem; }
+        
+        /* Formulários Corporativos */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; margin-bottom: 0.375rem; font-weight: 500; font-size: 0.875rem; color: #334155; }
+        .dark .form-label { color: #cbd5e1; }
+        .form-input, .form-select { 
+            width: 100%; padding: 0.625rem 0.875rem; border: 1px solid #cbd5e1; border-radius: 6px; 
+            background: #ffffff; color: #0f172a; font-size: 0.875rem; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .dark .form-input, .dark .form-select { background: #0f172a; border-color: #475569; color: #f8fafc; }
+        .dark .form-input:focus, .dark .form-select:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); }
+        .other-input { margin-top: 0.5rem; display: none; }
+        
+        /* Botões Profissionais */
+        .modal-footer, .page-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px; }
+        .dark .modal-footer, .dark .page-footer { background: #0f172a; border-top-color: #334155; }
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-primary { background: #2563eb; color: white; border: 1px solid #1d4ed8; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #ffffff; color: #334155; border: 1px solid #cbd5e1; }
+        .btn-secondary:hover { background: #f1f5f9; }
+        .dark .btn-secondary { background: #1e293b; color: #f8fafc; border-color: #475569; }
+        .dark .btn-secondary:hover { background: #334155; }
+        .btn-danger { background: #ef4444; color: white; border: 1px solid #dc2626; }
+        .btn-danger:hover { background: #dc2626; }
+        
+        /* Tabela Profissional */
+        table { border-collapse: collapse; width: 100%; }
+        thead th { background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: #64748b; padding: 0.75rem 1rem; }
+        .dark border-gray-200 { border-color: #334155; }
+        .dark thead th { background: #0f172a; border-bottom-color: #334155; color: #94a3b8; }
+        tbody td { border-bottom: 1px solid #f1f5f9; padding: 1rem; font-size: 0.875rem; color: #334155; }
+        .dark tbody td { border-bottom-color: #1e293b; color: #cbd5e1; }
+        tbody tr:hover { background-color: #f8fafc; }
+        .dark tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+        
+        /* Gráfico */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .hidden { display: none !important; }
+
+        /* Aba / Tab Switcher Padrão */
+        .tab-button { transition: all 0.2s; border-bottom: 2px solid transparent; }
+        .tab-button.active { border-bottom-color: #2563eb; color: #2563eb; font-weight: 600; }
+        .dark .tab-button.active { border-bottom-color: #60a5fa; color: #60a5fa; }
+
+        /* Sidebar Nav Item */
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 6px; color: #475569; font-weight: 500; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; }
+        .nav-item:hover { background-color: #f1f5f9; color: #0f172a; }
+        .nav-item.active { background-color: #eff6ff; color: #2563eb; }
+        .dark .nav-item { color: #cbd5e1; }
+        .dark .nav-item:hover { background-color: #1e293b; color: #ffffff; }
+        .dark .nav-item.active { background-color: rgba(37, 99, 235, 0.1); color: #60a5fa; }
+        
+        /* Sidebar Mobile Overlay */
+        #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 30; }
+        #sidebar-overlay.show { display: block; }
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-200 transition-colors duration-200">
+
+    <!-- Notificação -->
+    <div id="notification" class="notification">
+        <i id="notification-icon" class="fas fa-check-circle text-lg mt-0.5"></i>
+        <span id="notification-message" class="flex-1"></span>
+    </div>
+
+    <!-- Tela de Login Corporativa -->
+    <div id="login-container" class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div class="h-2 bg-blue-600"></div>
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <img id="logo-login" src="https://pub-263c6a7252164111a104a68e6835cfc4.r2.dev/Logo%20IBVET%20horizontal%20azul.png" alt="IBVET Logo" class="h-12 mx-auto mb-4 object-contain">
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Acesso Restrito</h2>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Insira suas credenciais corporativas</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="form-group mb-0">
+                        <label for="email" class="form-label">E-mail Profissional</label>
+                        <input type="email" id="email" class="form-input" autocomplete="email" placeholder="nome@empresa.com.br">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="password" class="form-label">Senha</label>
+                        <div class="relative">
+                            <input type="password" id="password" class="form-input pr-10" autocomplete="current-password" placeholder="••••••••">
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-slate-400 hover:text-blue-500" onclick="togglePasswordVisibility()">
+                                <i id="password-toggle-icon" class="fas fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="pt-4">
+                        <button onclick="loginWithEmail()" class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            Entrar no Sistema
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-4 text-center border-t border-slate-100 dark:border-slate-700">
+                <p class="text-xs text-slate-500">© 2025 Dashboard Operacional. Ambiente Seguro.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Principal: Sidebar + Conteúdo -->
+    <div id="dashboard-container" class="hidden h-screen flex overflow-hidden bg-slate-50 dark:bg-slate-900 w-full relative">
+        
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+        <!-- Menu Lateral (Sidebar) -->
+        <aside id="sidebar" class="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 flex flex-col absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 z-40">
+            <!-- Logo Area -->
+            <div class="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700">
+                <img id="logo-preview" src="https://pub-263c6a7252164111a104a68e6835cfc4.r2.dev/Logo%20IBVET%20horizontal%20azul.png" alt="Logo" class="h-8 object-contain">
+                <button class="md:hidden text-slate-500" onclick="toggleMobileMenu()"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar" id="sidebar-nav">
+                <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-4">Principal</p>
+                <div id="nav-dashboard" class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+                    <i class="fas fa-chart-pie w-5"></i> Dashboard
+                </div>
+                <div id="nav-visao" class="nav-item" data-page="visao-geral" onclick="switchPage('visao-geral')">
+                    <i class="fas fa-table w-5"></i> Visão Geral
+                </div>
+                
+                <p id="nav-operacional-title" class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-6">Operacional</p>
+                <div id="nav-registro" class="nav-item" data-page="registro" onclick="openRegistroPage()">
+                    <i class="fas fa-plus-circle w-5"></i> Registro
+                </div>
+                <div id="nav-exportar" class="nav-item" onclick="generatePDF()">
+                    <i class="fas fa-file-pdf w-5"></i> Exportar Relatório
+                </div>
+                
+                <p id="nav-config-title" class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-6">Configurações</p>
+                <div id="nav-acessos" class="nav-item" data-page="acessos" onclick="switchPage('acessos')">
+                    <i class="fas fa-users-cog w-5"></i> Acessos
+                </div>
+                <div id="nav-formatos" class="nav-item" data-page="formatos" onclick="switchPage('formatos')">
+                    <i class="fas fa-tags w-5"></i> Formatos
+                </div>
+                <div id="nav-status" class="nav-item" data-page="status" onclick="switchPage('status')">
+                    <i class="fas fa-layer-group w-5"></i> Status
+                </div>
+                <div id="nav-banco" class="nav-item" data-page="banco" onclick="switchPage('banco')">
+                    <i class="fas fa-database w-5"></i> Conexão Banco
+                </div>
+            </nav>
+            
+            <!-- Branding / Footer Options -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <p class="text-xs font-semibold text-slate-500 mb-2">Identidade Visual</p>
+                <div class="flex flex-col gap-2 mb-4">
+                    <input type="url" id="logo-url-input" placeholder="Link da sua logo aqui..." class="w-full border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-xs dark:bg-slate-700 dark:text-white focus:outline-none focus:border-blue-500">
+                    <button onclick="uploadLogoFromUrl()" class="w-full bg-blue-600 text-white rounded-md px-3 py-2 text-xs font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                        <i class="fas fa-link"></i> Atualizar Logo
+                    </button>
+                </div>
+                
+                <button onclick="logout()" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-lg text-sm font-semibold transition-colors border border-red-200 dark:border-red-800/50 mt-2">
+                    <i class="fas fa-sign-out-alt"></i> Sair / Trocar Usuário
+                </button>
+            </div>
+        </aside>
+
+        <!-- Área Principal de Conteúdo -->
+        <main class="flex-1 flex flex-col overflow-hidden relative">
+            
+            <!-- Topbar (Header) -->
+            <header class="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-10">
+                <div class="flex items-center gap-3">
+                    <button class="md:hidden text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors" onclick="toggleMobileMenu()">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-lg font-semibold text-slate-800 dark:text-white" id="topbar-title">Dashboard Operacional</h1>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="hidden lg:flex items-center gap-2 text-xs text-slate-500 font-medium bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-full">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span id="sync-status">Sincronizado via Firebase</span>
+                    </div>
+
+                    <button onclick="forceSync()" class="text-slate-400 hover:text-blue-600 transition-colors" title="Forçar Sincronização">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+
+                    <button onclick="toggleDarkMode()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors" title="Alternar Tema">
+                        <i class="fas fa-moon text-lg" id="theme-icon"></i>
+                    </button>
+                    
+                    <div class="w-px h-6 bg-slate-200 dark:bg-slate-700"></div>
+                    
+                    <div class="flex items-center gap-3">
+                        <div class="hidden md:block text-right">
+                            <p id="user-email" class="text-sm font-medium text-slate-700 dark:text-slate-200 leading-tight">...</p>
+                            <p class="text-xs text-slate-400">Sessão Ativa</p>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
+                            <i class="fas fa-user-tie text-sm"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Conteúdo Rolável -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8 relative">
+                
+                <!-- PÁGINA 1: DASHBOARD -->
+                <div id="page-dashboard" class="page-section active max-w-7xl mx-auto space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Entregues</p>
+                                    <p class="text-3xl font-semibold text-slate-800 dark:text-white mt-2" id="delivered-count">0</p>
+                                </div>
+                                <div class="p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+                                    <i class="fas fa-check-circle text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-xs text-slate-500">
+                                <span class="text-emerald-500 font-medium mr-1"><i class="fas fa-arrow-up"></i> Sucesso</span> acumulado
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Em Produção</p>
+                                    <p class="text-3xl font-semibold text-slate-800 dark:text-white mt-2" id="production-count">0</p>
+                                </div>
+                                <div class="p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
+                                    <i class="fas fa-cog fa-spin text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-xs text-slate-500">Tarefas em andamento ativo</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Solicitados</p>
+                                    <p class="text-3xl font-semibold text-slate-800 dark:text-white mt-2" id="requested-count">0</p>
+                                </div>
+                                <div class="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                                    <i class="fas fa-inbox text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-xs text-slate-500">Aguardando início</div>
+                        </div>
+                        <div class="bg-blue-600 rounded-xl shadow-sm border border-blue-700 p-5 text-white flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
+                            <div class="flex justify-between items-start relative z-10">
+                                <div>
+                                    <p id="dashboard-year-title" class="text-sm font-medium text-blue-100 uppercase tracking-wider">Entregas 2025</p>
+                                    <p class="text-4xl font-bold text-white mt-1" id="yearly-total-count">0</p>
+                                </div>
+                                <div class="p-2 bg-blue-500 rounded-lg text-white">
+                                    <i class="fas fa-chart-line text-xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center justify-between text-xs text-blue-200 relative z-10 border-t border-blue-500 pt-3">
+                                <span>Alerta: <b id="pending-count" class="text-white">0</b> pendências</span>
+                                <i class="fas fa-exclamation-circle text-red-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 lg:p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-800 dark:text-white">Desempenho de Produção</h3>
+                                <p class="text-sm text-slate-500">Análise temporal de entregas</p>
+                            </div>
+                            <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-md border border-slate-200 dark:border-slate-600">
+                                <button onclick="changeChartType('line')" class="px-3 py-1 text-xs font-medium bg-white dark:bg-slate-600 shadow-sm rounded text-slate-700 dark:text-white"><i class="fas fa-chart-line mr-1"></i> Linha</button>
+                                <button onclick="changeChartType('bar')" class="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"><i class="fas fa-chart-bar mr-1"></i> Barra</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PÁGINA 2: VISÃO GERAL -->
+                <div id="page-visao-geral" class="page-section max-w-7xl mx-auto space-y-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                        <div class="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 sm:px-6">
+                            <div class="flex overflow-x-auto custom-scrollbar gap-6">
+                                <button class="tab-button active py-4 font-medium text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap" data-tab="all">Visão Geral</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="0">Jan</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="1">Fev</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="2">Mar</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="3">Abr</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="4">Mai</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="5">Jun</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="6">Jul</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="7">Ago</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="8">Set</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="9">Out</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="10">Nov</button>
+                                <button class="tab-button py-4 font-medium text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 whitespace-nowrap" data-tab="11">Dez</button>
+                            </div>
+                        </div>
+                        <div class="p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-700">
+                            <div>
+                                <h2 id="table-title" class="text-base font-semibold text-slate-800 dark:text-white">Acervo de Materiais</h2>
+                                <p id="monthly-summary" class="text-sm text-slate-500 mt-1 hidden"></p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select id="year-filter" class="form-select py-1.5 px-3 text-xs font-semibold w-24 bg-slate-100 border-slate-200 dark:bg-slate-700 dark:border-slate-600 shadow-sm cursor-pointer text-slate-700 dark:text-white" onchange="changeYear()">
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                </select>
+                                <button id="btn-novo-registro" class="btn btn-primary shadow-sm text-xs" onclick="openRegistroPage()"><i class="fas fa-plus"></i> Novo</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr>
+                                        <th class="w-16">ID</th>
+                                        <th>Material / Descrição</th>
+                                        <th>Formato</th>
+                                        <th>Responsável</th>
+                                        <th>Status Operacional</th>
+                                        <th>Prazo</th>
+                                        <th class="text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="content-items"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PÁGINA 3: REGISTRO (FORMULÁRIO) -->
+                <div id="page-registro" class="page-section max-w-3xl mx-auto">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                            <div>
+                                <h2 id="form-page-title" class="text-lg font-semibold text-slate-800 dark:text-white">Novo Registro de Material</h2>
+                                <p class="text-sm text-slate-500 mt-1">Preencha os dados abaixo para cadastrar na base.</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center"><i class="fas fa-file-alt"></i></div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <input type="hidden" id="item-id-hidden">
+                            <div class="form-group mb-0">
+                                <label for="item-title" class="form-label">Nome / Título do Material <span class="text-red-500">*</span></label>
+                                <input type="text" id="item-title" class="form-input" placeholder="Ex: Manual de Procedimentos" required>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label for="item-link" class="form-label">Link do Recurso Web (Opcional)</label>
+                                <input type="url" id="item-link" class="form-input" placeholder="https://drive.google.com/...">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="form-group mb-0">
+                                    <label for="item-type" class="form-label">Formato do Arquivo <span class="text-red-500">*</span></label>
+                                    <select id="item-type" class="form-select" onchange="toggleOtherInput('type')">
+                                        <option value="Video">Vídeo / Aula</option>
+                                        <option value="Apresentação">Apresentação / Slides</option>
+                                        <option value="Documento">Documento / PDF</option>
+                                        <option value="Exercício">Lista de Exercícios</option>
+                                        <option value="Outro">Especificar outro...</option>
+                                    </select>
+                                    <input type="text" id="item-type-other" class="form-input other-input" placeholder="Especifique o formato">
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label for="item-status" class="form-label">Status Atual <span class="text-red-500">*</span></label>
+                                    <select id="item-status" class="form-select" onchange="toggleOtherInput('status')">
+                                        <option value="requested">Solicitado</option>
+                                        <option value="production">Em Produção</option>
+                                        <option value="pending">Com Pendência</option>
+                                        <option value="delivered">Entregue / Finalizado</option>
+                                        <option value="Outro">Especificar status...</option>
+                                    </select>
+                                    <input type="text" id="item-status-other" class="form-input other-input" placeholder="Especifique o status">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="form-group mb-0">
+                                    <label for="item-delivery-date" class="form-label">Prazo Final (Deadline) <span class="text-red-500">*</span></label>
+                                    <input type="date" id="item-delivery-date" class="form-input" required>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label for="item-responsible" class="form-label">Responsável <span class="text-red-500">*</span></label>
+                                    <input type="email" id="item-responsible" class="form-input bg-slate-50 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-dashed" required readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                            <button class="btn btn-secondary" onclick="switchPage('visao-geral')">Cancelar</button>
+                            <button class="btn btn-primary" onclick="saveItemPage()"><i class="fas fa-save mr-1"></i> Salvar Registro</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PÁGINA 4: ACESSOS -->
+                <div id="page-acessos" class="page-section max-w-6xl mx-auto space-y-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 flex items-start gap-4">
+                        <i class="fas fa-shield-alt text-blue-500 text-2xl mt-1"></i>
+                        <div>
+                            <h3 class="text-blue-800 dark:text-blue-300 font-semibold mb-1">Painel de Acessos e Permissões</h3>
+                            <p class="text-sm text-blue-600 dark:text-blue-400">Gerencie a hierarquia da sua equipe. <b>Somente Administradores</b> podem adicionar, editar ou excluir conteúdos.</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-slate-800 dark:text-white">Usuários Cadastrados</h2>
+                        <button class="btn btn-primary shadow-sm" onclick="openAddUserModal()"><i class="fas fa-user-plus text-xs"></i> Novo Usuário</button>
+                    </div>
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                            <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+                                <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2"><i class="fas fa-user-tie text-emerald-600"></i> Administradores</h3>
+                                <span id="admin-count" class="px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300">Total: 0</span>
+                            </div>
+                            <div id="admin-users-list" class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1"></div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                            <div class="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+                                <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2"><i class="fas fa-users text-blue-600"></i> Convidados</h3>
+                                <span id="guest-count" class="px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300">Total: 0</span>
+                            </div>
+                            <div id="guest-users-list" class="divide-y divide-slate-100 dark:divide-slate-700/50 flex-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PÁGINAS DE CONFIGURAÇÃO -->
+                <div id="page-formatos" class="page-section max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <h2 class="text-lg font-semibold text-slate-800 dark:text-white"><i class="fas fa-tags text-blue-500 mr-2"></i> Adicionar Formato de Arquivo</h2>
+                            <p class="text-sm text-slate-500 mt-1">Crie novas nomenclaturas para categorizar os seus conteúdos na hora do registro.</p>
+                        </div>
+                        <div class="p-6">
+                            <div class="form-group max-w-md mb-0">
+                                <label for="new-type-name" class="form-label">Nomenclatura do Formato *</label>
+                                <input type="text" id="new-type-name" class="form-input" placeholder="Ex: Podcast, Arquivo Excel" required>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-start">
+                            <button class="btn btn-primary" onclick="addNewType()"><i class="fas fa-plus mr-1"></i> Adicionar Formato</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-status" class="page-section max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <h2 class="text-lg font-semibold text-slate-800 dark:text-white"><i class="fas fa-layer-group text-blue-500 mr-2"></i> Configurar Novo Status</h2>
+                            <p class="text-sm text-slate-500 mt-1">Defina novos status operacionais com cores customizadas para acompanhar a esteira de materiais.</p>
+                        </div>
+                        <div class="p-6 space-y-4 max-w-md">
+                            <div class="form-group mb-0">
+                                <label for="new-status-name" class="form-label">Nome do Status *</label>
+                                <input type="text" id="new-status-name" class="form-input" placeholder="Ex: Em Avaliação" required>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label for="new-status-color" class="form-label">Identificação Visual (Cor) *</label>
+                                <select id="new-status-color" class="form-select">
+                                    <option value="green">Verde (Sucesso, Aprovação)</option>
+                                    <option value="yellow">Amarelo (Atenção, Processando)</option>
+                                    <option value="blue">Azul (Informativo, Novo)</option>
+                                    <option value="red">Vermelho (Erro, Bloqueio)</option>
+                                    <option value="purple">Roxo (Especial)</option>
+                                    <option value="gray">Cinza (Neutro, Arquivado)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-start">
+                            <button class="btn btn-primary" onclick="addNewStatus()"><i class="fas fa-save mr-1"></i> Salvar Status</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nova Página de Conexão com Firestore -->
+                <div id="page-banco" class="page-section max-w-4xl mx-auto space-y-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+                            <h2 class="text-lg font-semibold text-slate-800 dark:text-white"><i class="fas fa-database text-blue-500 mr-2"></i> Banco de Dados Firestore</h2>
+                            <p class="text-sm text-slate-500 mt-1">Sua aplicação agora está conectada nativamente ao Firebase Firestore.</p>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800/50 text-sm text-emerald-700 dark:text-emerald-400 max-w-2xl flex items-start gap-3">
+                                <i class="fas fa-check-circle text-emerald-500 mt-0.5 text-lg"></i> 
+                                <div>
+                                    <p class="font-semibold">Sincronização Ativa em Tempo Real</p>
+                                    <p class="mt-1">A migração do Google Sheets para o Firebase foi concluída. Todos os registros de materiais, permissões e usuários estão sendo sincronizados imediatamente na coleção compartilhada na nuvem.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                                <h3 class="text-md font-semibold text-slate-800 dark:text-white mb-2">Migração de Dados Antigos</h3>
+                                <p class="text-sm text-slate-500 mb-4">Caso você ainda tenha dados na sua antiga planilha do Google Sheets, clique no botão abaixo para importá-los para o Firebase.</p>
+                                <button onclick="importFromSheet()" class="btn btn-secondary shadow-sm text-sm">
+                                    <i class="fas fa-cloud-download-alt text-blue-500 mr-2"></i> Importar Dados da Planilha
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-8"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modais Essenciais -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmação</h3>
+                <span class="modal-close" onclick="closeModal('confirm-modal')"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body space-y-4">
+                <p id="confirm-message" class="text-sm text-slate-700 dark:text-slate-300"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('confirm-modal')">Cancelar</button>
+                <button class="btn btn-danger" id="confirm-btn-yes">Confirmar Ação</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="permissions-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Configurar Permissões</h3>
+                <span class="modal-close" onclick="closeModal('permissions-modal')"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body space-y-4">
+                <p class="text-sm text-slate-500 mb-2" id="perm-user-name">Acessos restritos para o convidado.</p>
+                <input type="hidden" id="perm-user-id">
+                <div class="space-y-3 mt-4">
+                    <label class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100">
+                        <div>
+                            <span class="font-medium text-sm text-slate-800 dark:text-white">Ver Dashboard</span>
+                            <p class="text-xs text-slate-500">Acesso a gráficos e métricas.</p>
+                        </div>
+                        <div class="relative inline-flex items-center">
+                            <input type="checkbox" id="perm-dashboard" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </div>
+                    </label>
+                    <label class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100">
+                        <div>
+                            <span class="font-medium text-sm text-slate-800 dark:text-white">Ver Repositório</span>
+                            <p class="text-xs text-slate-500">Leitura do acervo de materiais.</p>
+                        </div>
+                        <div class="relative inline-flex items-center">
+                            <input type="checkbox" id="perm-visao" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('permissions-modal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePermissions()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-user-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Cadastrar Novo Usuário</h3>
+                <span class="modal-close" onclick="closeModal('add-user-modal')"><i class="fas fa-times"></i></span>
+            </div>
+            <div class="modal-body space-y-4">
+                <div class="form-group mb-0">
+                    <label for="new-user-name" class="form-label">Nome de Exibição *</label>
+                    <input type="text" id="new-user-name" class="form-input" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="new-user-email" class="form-label">E-mail de Acesso *</label>
+                    <input type="email" id="new-user-email" class="form-input" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="new-user-password" class="form-label">Senha Inicial *</label>
+                    <input type="password" id="new-user-password" class="form-input" required>
+                </div>
+                <div class="form-group mb-0">
+                    <label for="new-user-role" class="form-label">Perfil de Acesso *</label>
+                    <select id="new-user-role" class="form-select">
+                        <option value="guest">Convidado (Leitura apenas)</option>
+                        <option value="admin">Administrador (Gestão total)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('add-user-modal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="createNewFirebaseUser()">Criar Usuário</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Áudios -->
+    <audio id="audio-success" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
+    <audio id="audio-error" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
+    <audio id="audio-pop" src="https://actions.google.com/sounds/v1/water/water_drop.ogg" preload="auto"></audio>
+
+    <!-- Inicialização modular do Firebase via Módulos Nativos (V11) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Usando ESTRITAMENTE o seu Firebase! Ignorando o ambiente de teste do preview.
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOLffEXOCAEjq0hXu_kjw8r2UcHjQRaXg",
+            authDomain: "controle-de-conteudos.firebaseapp.com",
+            projectId: "controle-de-conteudos",
+            storageBucket: "controle-de-conteudos.firebasestorage.app",
+            messagingSenderId: "22743898419",
+            appId: "1:22743898419:web:2ee19eabc0d66644fd0646"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'ibvet-producao'; // Suas coleções ficarão guardadas em segurança na sua nuvem
+
+        const sounds = { success: document.getElementById('audio-success'), error: document.getElementById('audio-error'), pop: document.getElementById('audio-pop') };
+        window.playSound = function(type) { try { if(sounds[type]) { sounds[type].currentTime = 0; sounds[type].volume = 0.3; sounds[type].play().catch(e => {}); } } catch (e) {} };
+
+        const loginContainer = document.getElementById('login-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const userEmailSpan = document.getElementById('user-email');
+        
+        let isDashboardInitialized = false;
+        let allContentItems = [];
+        let systemUsers = [];
+        let performanceChart;
+        let currentSelectedYear = 2025;
+        let unsubMateriais = null;
+        let unsubUsuarios = null;
+        let unsubConfig = null;
+
+        // Modal de Confirmação Customizado
+        window.pendingConfirmCallback = null;
+        window.showConfirm = function(msg, callback) {
+            document.getElementById('confirm-message').textContent = msg;
+            window.pendingConfirmCallback = callback;
+            document.getElementById('confirm-modal').classList.add('flex');
+        };
+        
+        document.getElementById('confirm-btn-yes').addEventListener('click', () => {
+            window.closeModal('confirm-modal');
+            if (window.pendingConfirmCallback) {
+                window.pendingConfirmCallback();
+                window.pendingConfirmCallback = null;
+            }
+        });
+
+        // Monitora o estado de autenticação real do seu usuário
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loginContainer.style.display = 'none';
+                dashboardContainer.classList.remove('hidden');
+                dashboardContainer.classList.add('flex');
+                setupFirestoreListeners(user);
+            } else {
+                loginContainer.style.display = 'flex';
+                dashboardContainer.classList.add('hidden');
+                dashboardContainer.classList.remove('flex');
+                isDashboardInitialized = false;
+                if(unsubMateriais) unsubMateriais();
+                if(unsubUsuarios) unsubUsuarios();
+                if(unsubConfig) unsubConfig();
+            }
+        });
+
+        // Autenticação Manual - Solicita E-mail e Senha e checa no seu Banco de Dados
+        window.loginWithEmail = async function() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            window.playSound('pop');
+            if (!email || !password) return window.showNotification('Forneça e-mail e senha.', 'warning');
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error(error);
+                window.showNotification('Credenciais inválidas. Verifique seu e-mail e senha.', 'error');
+            }
+        };
+
+        function setupFirestoreListeners(user) {
+            if (!user) return;
+            if (isDashboardInitialized) return;
+            isDashboardInitialized = true;
+
+            const userEmail = user.email || `usuario-${user.uid.substring(0,5)}@sistema.com`;
+            userEmailSpan.textContent = userEmail;
+            
+            const usuariosRef = collection(db, 'artifacts', appId, 'public', 'data', 'usuarios');
+            const materiaisRef = collection(db, 'artifacts', appId, 'public', 'data', 'materiais');
+            const configRef = collection(db, 'artifacts', appId, 'public', 'data', 'configuracoes');
+
+            // Escutador em Tempo Real - USUÁRIOS
+            unsubUsuarios = onSnapshot(usuariosRef, (snapshot) => {
+                systemUsers = [];
+                snapshot.forEach(docSnap => systemUsers.push(docSnap.data()));
+                
+                let uConf = systemUsers.find(u => u.id === user.uid || (u.email && u.email.toLowerCase() === userEmail.toLowerCase()));
+                
+                // Se o usuário ainda não existe no banco de permissões
+                if (!uConf) {
+                    if (userEmail.toLowerCase() === "aem.producoes.visuais@gmail.com") {
+                        uConf = { id: user.uid, name: "Admin Master", email: userEmail, role: "admin", perms: { dashboard: true, visao: true } };
+                    } else {
+                        uConf = { id: user.uid, name: "Novo Acesso", email: userEmail, role: "guest", perms: { dashboard: true, visao: true } };
+                    }
+                    setDoc(doc(usuariosRef, user.uid), uConf); // Salva no Firestore
+                }
+
+                renderUsersList();
+                applyUserPermissions(user);
+            }, (error) => console.error(error));
+
+            // Escutador em Tempo Real - MATERIAIS
+            unsubMateriais = onSnapshot(materiaisRef, (snapshot) => {
+                allContentItems = [];
+                snapshot.forEach(docSnap => allContentItems.push(docSnap.data()));
+                
+                if (!performanceChart) {
+                    window.initPerformanceChart();
+                } else {
+                    window.updateChartData(document.querySelector('.tab-button.active').dataset.tab);
+                }
+                
+                window.updateUIForTab(document.querySelector('.tab-button.active').dataset.tab);
+                window.updateSummaryCounts(allContentItems);
+            }, (error) => console.error(error));
+
+            // Escutador em Tempo Real - LOGO E CONFIGURAÇÕES
+            unsubConfig = onSnapshot(doc(configRef, 'branding'), (docSnap) => {
+                if (docSnap.exists() && docSnap.data().logoUrl) {
+                    const url = docSnap.data().logoUrl;
+                    document.getElementById("logo-login").src = url;
+                    document.getElementById("logo-preview").src = url;
+                    localStorage.setItem("ibvetLogo", url);
+                }
+            }, (error) => console.error(error));
+
+            checkDarkMode();
+            setupTabNavigation();
+        }
+
+        window.logout = function() { window.playSound('pop'); signOut(auth); };
+
+        window.togglePasswordVisibility = function() {
+            window.playSound('pop');
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('password-toggle-icon');
+            pwd.type = pwd.type === 'text' ? 'password' : 'text';
+            icon.className = pwd.type === 'text' ? 'fas fa-eye-slash text-blue-500' : 'fas fa-eye text-slate-400';
+        };
+
+        function applyUserPermissions(user) {
+            const userEmail = user ? (user.email || `usuario-${user.uid.substring(0,5)}@sistema.com`) : "";
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === userEmail);
+            if(!uConf) return;
+
+            const isAdmin = uConf.role === 'admin';
+            const p = uConf.perms;
+
+            document.getElementById('nav-dashboard').style.display = (isAdmin || p.dashboard) ? 'flex' : 'none';
+            document.getElementById('nav-visao').style.display = (isAdmin || p.visao) ? 'flex' : 'none';
+            document.getElementById('nav-registro').style.display = isAdmin ? 'flex' : 'none'; 
+            document.getElementById('nav-exportar').style.display = (isAdmin || p.visao) ? 'flex' : 'none';
+            
+            const btnNovo = document.getElementById('btn-novo-registro');
+            if(btnNovo) btnNovo.style.display = isAdmin ? 'inline-flex' : 'none';
+
+            const configDisplay = isAdmin ? 'flex' : 'none';
+            document.getElementById('nav-acessos').style.display = configDisplay;
+            document.getElementById('nav-formatos').style.display = configDisplay;
+            document.getElementById('nav-status').style.display = configDisplay;
+            document.getElementById('nav-banco').style.display = configDisplay;
+            document.getElementById('nav-config-title').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('nav-operacional-title').style.display = (isAdmin || p.visao) ? 'block' : 'none';
+
+            const activePage = document.querySelector('.page-section.active')?.id.replace('page-', '');
+            if(!activePage) {
+                if(isAdmin) window.switchPage('dashboard');
+                else if(p.dashboard) window.switchPage('dashboard');
+                else if(p.visao) window.switchPage('visao-geral');
+            }
+        }
+        
+        window.switchPage = function(pageId) {
+            if(!pageId) return;
+            const user = auth.currentUser;
+            const userEmail = user ? (user.email || `usuario-${user.uid.substring(0,5)}@sistema.com`) : "";
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === userEmail);
+            if(uConf) {
+                const isAdmin = uConf.role === 'admin';
+                const adminOnly = ['acessos', 'formatos', 'status', 'banco', 'registro'];
+                if(adminOnly.includes(pageId) && !isAdmin) {
+                    window.playSound('error');
+                    return window.showNotification('Somente administradores podem acessar esta função.', 'error');
+                }
+            }
+            window.playSound('pop');
+            document.querySelectorAll('.page-section').forEach(sec => sec.classList.remove('active'));
+            const target = document.getElementById('page-' + pageId);
+            if(target) target.classList.add('active');
+            document.querySelectorAll('#sidebar-nav .nav-item').forEach(nav => nav.classList.remove('active'));
+            const activeNav = document.querySelector(`#sidebar-nav .nav-item[data-page="${pageId}"]`);
+            if(activeNav) activeNav.classList.add('active');
+            
+            const titles = { 'dashboard': 'Dashboard Operacional', 'visao-geral': 'Repositório de Materiais', 'registro': 'Gestão de Registros', 'acessos': 'Controle de Acessos', 'banco': 'Conexão com Firestore' };
+            document.getElementById('topbar-title').textContent = titles[pageId] || 'Configurações';
+            if(pageId === 'dashboard' && performanceChart) setTimeout(() => performanceChart.update(), 50);
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.remove('show');
+            }
+        };
+
+        window.toggleMobileMenu = function() {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('-translate-x-full');
+            ov.classList.toggle('show');
+        };
+
+        window.forceSync = function() { 
+            window.showNotification("Sincronização em tempo real nativa já está ativa.", "success"); 
+        };
+
+        window.openRegistroPage = function() {
+            const user = auth.currentUser;
+            const userEmail = user ? (user.email || `usuario-${user.uid.substring(0,5)}@sistema.com`) : "";
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === userEmail);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Apenas Administradores podem adicionar itens.", "error");
+            
+            document.getElementById("item-id-hidden").value = "";
+            document.getElementById("item-title").value = "";
+            document.getElementById("item-link").value = "";
+            document.getElementById("item-type").value = "Video";
+            document.getElementById("item-responsible").value = userEmail;
+            document.getElementById("item-status").value = "requested";
+            document.getElementById("item-delivery-date").valueAsDate = new Date();
+            window.toggleOtherInput("type", false); window.toggleOtherInput("status", false);
+            document.getElementById("form-page-title").textContent = 'Novo Registro de Material';
+            window.switchPage('registro');
+        };
+
+        window.saveItemPage = async function() {
+            try {
+                const user = auth.currentUser;
+                const userEmail = user ? (user.email || `usuario-${user.uid.substring(0,5)}@sistema.com`) : "";
+                const uConf = systemUsers.find(u => u.id === user?.uid || u.email === userEmail);
+                if(uConf.role !== 'admin') throw new Error("Operação restrita a administradores.");
+                
+                const itemId = document.getElementById("item-id-hidden").value;
+                const title = document.getElementById("item-title").value.trim();
+                const link = document.getElementById("item-link").value.trim();
+                const type = document.getElementById("item-type").value === "Outro" ? document.getElementById("item-type-other").value.trim() : document.getElementById("item-type").value;
+                const responsible = document.getElementById("item-responsible").value.trim();
+                const status = document.getElementById("item-status").value === "Outro" ? document.getElementById("item-status-other").value.trim() : document.getElementById("item-status").value;
+                const deliveryDate = document.getElementById("item-delivery-date").value;
+                
+                if (!title || !responsible || !deliveryDate) throw new Error("Campos obrigatórios ausentes.");
+                
+                const docId = itemId || String(Date.now()); // ID único numérico
+                const itemData = { id: docId, title, link, type, responsible, status, deliveryDate };
+                if (!itemId) itemData.createdAt = new Date().toISOString();
+
+                // Grava nativamente no Firestore (coleção compartilhada)
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materiais', docId), itemData, { merge: true });
+                
+                window.switchPage('visao-geral');
+                window.showNotification("Material gravado com sucesso no Firebase!", "success");
+            } catch (error) { window.showNotification(error.message, "error"); }
+        };
+
+        window.editItem = function(itemId) {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+            
+            const item = allContentItems.find(i => String(i.id) === String(itemId));
+            if (item) {
+                document.getElementById("item-id-hidden").value = item.id;
+                document.getElementById("item-title").value = item.title;
+                document.getElementById("item-link").value = item.link || "";
+                document.getElementById("item-responsible").value = item.responsible;
+                document.getElementById("item-delivery-date").value = item.deliveryDate;
+                const setV = (f, v) => {
+                    const el = document.getElementById(`item-${f}`);
+                    if ([...el.options].some(o => o.value === v)) { el.value = v; window.toggleOtherInput(f, false); }
+                    else { el.value = "Outro"; document.getElementById(`item-${f}-other`).value = v || ""; window.toggleOtherInput(f, true); }
+                };
+                setV("type", item.type); setV("status", item.status);
+                document.getElementById("form-page-title").textContent = 'Editar Material #' + item.id;
+                window.switchPage('registro');
+            }
+        };
+        
+        window.deleteItem = async function(itemId) {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+            
+            // Usando nosso Modal Seguro
+            window.showConfirm("Deseja excluir este item do banco de dados?", async () => {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materiais', String(itemId)));
+                window.showNotification("Removido do Firebase.", "success");
+            });
+        };
+
+        window.changeYear = function() {
+            currentSelectedYear = parseInt(document.getElementById('year-filter').value);
+            document.getElementById('dashboard-year-title').textContent = `Entregas ${currentSelectedYear}`;
+            window.updateUIForTab(document.querySelector('.tab-button.active').dataset.tab);
+        };
+
+        window.updateUIForTab = function(tab) {
+            const currentYear = currentSelectedYear;
+            const monthIndex = parseInt(tab);
+            let filteredItems = [];
+            const tableTitle = document.getElementById('table-title');
+            const monthlySummary = document.getElementById('monthly-summary');
+
+            if (tab === 'all') {
+                filteredItems = allContentItems.filter(item => new Date(item.deliveryDate).getFullYear() === currentYear);
+                tableTitle.textContent = `Acervo de Materiais (${currentYear})`;
+                monthlySummary.style.display = 'none';
+            } else {
+                const monthName = new Date(currentYear, monthIndex, 1).toLocaleString('pt-BR', { month: 'long' });
+                tableTitle.textContent = `Materiais de ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
+                filteredItems = allContentItems.filter(item => {
+                    const d = new Date(item.deliveryDate); return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
+                });
+                const deliv = filteredItems.filter(item => item.status === 'delivered').length;
+                monthlySummary.style.display = 'block';
+                monthlySummary.textContent = `${deliv} finalizados.`;
+            }
+            document.getElementById('yearly-total-count').textContent = allContentItems.filter(i => i.status === 'delivered' && new Date(i.deliveryDate).getFullYear() === currentYear).length;
+            window.renderTable(filteredItems);
+            window.updateSummaryCounts(filteredItems);
+            if (performanceChart) window.updateChartData(tab);
+        };
+
+        window.renderTable = function(items) {
+            const tbody = document.getElementById("content-items");
+            tbody.innerHTML = "";
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            const isAdmin = uConf && uConf.role === 'admin';
+            
+            if (!items || items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500">Vazio.</td></tr>';
+                return;
+            }
+            
+            items.forEach(item => {
+                const statusMap = { delivered: "Concluído", production: "Produção", requested: "Solicitado", pending: "Pendente" };
+                const sText = statusMap[item.status] || item.status;
+                const sClass = item.status ? `status-${item.status}` : "bg-slate-200";
+                
+                let actions = isAdmin ? `<button onclick="editItem('${item.id}')" class="text-slate-400 hover:text-blue-600 px-2"><i class="fas fa-edit"></i></button><button onclick="deleteItem('${item.id}')" class="text-slate-400 hover:text-red-500 px-2"><i class="fas fa-trash-alt"></i></button>` : `<span class="text-xs text-slate-400">Apenas leitura</span>`;
+                
+                const formatId = String(item.id).length > 5 ? String(item.id).substring(item.id.length - 4) : String(item.id).padStart(3,'0');
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `<td class="font-mono text-slate-400">#${formatId}</td><td><div class="font-medium truncate max-w-xs">${item.title}</div>${item.link ? `<a href="${item.link}" target="_blank" class="text-xs text-blue-500 underline">Ver anexo</a>` : ''}</td><td><span class="px-2 py-0.5 bg-slate-100 rounded text-xs">${item.type}</span></td><td class="text-sm">${item.responsible.split('@')[0]}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${sClass}">${sText}</span></td><td class="text-sm">${window.formatDate(item.deliveryDate)}</td><td class="text-right">${actions}</td>`;
+            });
+        };
+        
+        window.updateSummaryCounts = function(items) {
+            document.getElementById("delivered-count").textContent = items.filter(i => i.status === "delivered").length;
+            document.getElementById("production-count").textContent = items.filter(i => i.status === "production").length;
+            document.getElementById("requested-count").textContent = items.filter(i => i.status === "requested").length;
+            document.getElementById("pending-count").textContent = items.filter(i => i.status === "pending").length;
+        };
+
+        window.updateChartData = function(activeTab) {
+            if (!performanceChart) return;
+            const currentYear = currentSelectedYear;
+            if (activeTab === 'all') {
+                const data = Array(12).fill(0);
+                allContentItems.forEach(i => { if(i.status === 'delivered' && new Date(i.deliveryDate).getFullYear() === currentYear) data[new Date(i.deliveryDate).getMonth()]++; });
+                performanceChart.data.labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                performanceChart.data.datasets[0].data = data;
+            } else {
+                const mIdx = parseInt(activeTab);
+                const days = new Date(currentYear, mIdx + 1, 0).getDate();
+                const data = Array(days).fill(0);
+                allContentItems.forEach(i => { const d = new Date(i.deliveryDate); if(i.status === 'delivered' && d.getFullYear() === currentYear && d.getMonth() === mIdx) data[d.getDate() - 1]++; });
+                performanceChart.data.labels = Array.from({ length: days }, (_, i) => String(i + 1));
+                performanceChart.data.datasets[0].data = data;
+            }
+            performanceChart.update();
+        };
+
+        window.changeChartType = function(type) {
+            if (performanceChart) {
+                performanceChart.config.type = type;
+                performanceChart.update();
+            }
+        };
+
+        window.initPerformanceChart = function() {
+            if (performanceChart) performanceChart.destroy();
+            const ctx = document.getElementById("performanceChart").getContext("2d");
+            performanceChart = new Chart(ctx, { type: "line", data: { labels: [], datasets: [{ label: "Concluídos", data: [], borderColor: "#2563eb", backgroundColor: "rgba(37, 99, 235, 0.1)", borderWidth: 2, fill: true, tension: 0.3 }] }, options: window.getChartOptions() });
+            window.updateChartData(document.querySelector(".tab-button.active").dataset.tab);
+        };
+
+        window.getChartOptions = function() {
+            const isD = document.body.classList.contains("dark");
+            const color = isD ? "#334155" : "#f1f5f9";
+            return { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color }, ticks: { color: isD ? "#94a3b8" : "#64748b" } }, x: { grid: { display: false }, ticks: { color: isD ? "#94a3b8" : "#64748b" } } } };
+        };
+
+        window.generatePDF = async function() {
+            window.showNotification("Gerando PDF...", "warning");
+            
+            if(!document.getElementById('page-dashboard').classList.contains('active')) {
+                window.switchPage('dashboard');
+            }
+            window.updateChartData('all');
+            await new Promise(r => setTimeout(r, 800));
+            
+            try {
+                const chartNode = document.getElementById('performanceChart');
+                const chartCanvas = await html2canvas(chartNode, { backgroundColor: '#ffffff', scale: 2 });
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                
+                doc.setFont("helvetica");
+
+                const logoElement = document.getElementById('logo-preview');
+                try {
+                    doc.addImage(logoElement, 'PNG', 15, 12, 40, 11);
+                } catch(imgError) {
+                    console.warn("Aviso: Logo não injetada.");
+                    doc.setFontSize(18);
+                    doc.setFont("helvetica", "bold");
+                    doc.setTextColor(0, 0, 0);
+                    doc.text("Logo", 15, 20);
+                }
+                
+                doc.setFontSize(16);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(30, 41, 59);
+                doc.text("Relatório Operacional", 195, 20, { align: 'right' });
+                
+                const userEmail = auth.currentUser ? (auth.currentUser.email || `usuario-${auth.currentUser.uid.substring(0,5)}@sistema.com`) : '';
+                const dataAtual = new Date().toLocaleDateString("pt-BR");
+                
+                doc.setFontSize(9);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`Gerado por: ${userEmail}`, 15, 30);
+                doc.text(`Data: ${dataAtual}`, 195, 30, { align: 'right' });
+                
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(30, 41, 59);
+                doc.text(`Análise de Produção Anual (${currentSelectedYear})`, 15, 45);
+                
+                doc.addImage(chartCanvas.toDataURL('image/png'), 'PNG', 15, 50, 180, 85);
+                
+                const yearlyItems = allContentItems.filter(i => new Date(i.deliveryDate).getFullYear() === currentSelectedYear);
+                const delivered = yearlyItems.filter(i => i.status === 'delivered').length;
+                const production = yearlyItems.filter(i => i.status === 'production').length;
+                const requested = yearlyItems.filter(i => i.status === 'requested').length;
+                const pending = yearlyItems.filter(i => i.status === 'pending').length;
+                const total = delivered + production + requested + pending;
+
+                const tableBody = [
+                    ['Finalizados', delivered],
+                    ['Em Execução', production],
+                    ['Aguardando Início', requested]
+                ];
+                if(pending > 0) tableBody.push(['Com Pendência', pending]);
+                tableBody.push(['TOTAL', total]);
+
+                doc.autoTable({
+                    startY: 145,
+                    body: tableBody,
+                    theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 10, textColor: [60, 60, 60], lineColor: [200, 200, 200], lineWidth: 0.1, cellPadding: 4 },
+                    columnStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 40 } },
+                    didParseCell: function(data) {
+                        if (data.row.index === tableBody.length - 1) { 
+                            data.cell.styles.fontStyle = 'bold';
+                            data.cell.styles.textColor = [30, 30, 30];
+                        }
+                    },
+                    margin: { left: 15, right: 15 }
+                });
+
+                doc.save(`Relatorio_Operacional_${currentSelectedYear}.pdf`);
+                window.showNotification("PDF baixado com sucesso!", "success");
+            } catch (e) { 
+                console.error(e);
+                window.showNotification("Erro ao gerar o PDF.", "error"); 
+            }
+            
+            window.switchPage(document.querySelector('#sidebar-nav .nav-item.active').dataset.page);
+        };
+
+        function renderUsersList() {
+            const adminList = document.getElementById('admin-users-list');
+            const guestList = document.getElementById('guest-users-list');
+            adminList.innerHTML = ''; guestList.innerHTML = '';
+            let aC = 0; let gC = 0;
+            
+            const user = auth.currentUser;
+            
+            systemUsers.forEach(u => {
+                const isMe = user && (u.id === user.uid || u.email === user.email);
+                const roleSelect = isMe ? `<span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded border">Você (Admin)</span>` : `<select onchange="changeUserRole('${u.id}', this.value)" class="text-xs border rounded p-1"><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option><option value="guest" ${u.role === 'guest' ? 'selected' : ''}>Convidado</option></select>`;
+                
+                // Botão de deletar (não aparece para o próprio usuário ativo)
+                const deleteBtn = !isMe ? `<button onclick="deleteUser('${u.id}')" class="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 border border-transparent hover:border-red-200 rounded transition-colors" title="Excluir Usuário"><i class="fas fa-trash-alt"></i></button>` : '';
+                
+                const html = `<div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div>
+                        <p class="text-sm font-semibold">${u.name}</p>
+                        <p class="text-xs text-slate-500">${u.email}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${roleSelect}
+                        ${u.role === 'guest' ? `<button onclick="openPermissionsModal('${u.id}')" class="text-xs text-blue-600 px-2 border rounded py-1">Permissões</button>` : ''}
+                        ${deleteBtn}
+                    </div>
+                </div>`;
+                
+                if (u.role === 'admin') { adminList.insertAdjacentHTML('beforeend', html); aC++; } 
+                else { guestList.insertAdjacentHTML('beforeend', html); gC++; }
+            });
+            document.getElementById('admin-count').textContent = `Total: ${aC}`;
+            document.getElementById('guest-count').textContent = `Total: ${gC}`;
+        }
+
+        window.deleteUser = async function(id) {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+
+            // Usando nosso Modal Seguro
+            window.showConfirm("Tem certeza que deseja excluir este usuário? Ele perderá o acesso ao sistema imediatamente.", async () => {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', String(id)));
+                    window.showNotification("Usuário excluído com sucesso.", "success");
+                } catch(e) {
+                    window.showNotification("Erro ao excluir usuário.", "error");
+                }
+            });
+        };
+
+        window.changeUserRole = async function(id, role) {
+            const u = systemUsers.find(u => u.id === id);
+            if(u) { 
+                u.role = role; 
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', id), u, { merge: true });
+                window.showNotification('Cargo atualizado via Firebase.', 'success'); 
+            }
+        };
+
+        window.openPermissionsModal = function(id) {
+            const u = systemUsers.find(u => u.id === id);
+            if(u) {
+                document.getElementById('perm-user-id').value = u.id;
+                document.getElementById('perm-user-name').textContent = u.name;
+                document.getElementById('perm-dashboard').checked = u.perms.dashboard;
+                document.getElementById('perm-visao').checked = u.perms.visao;
+                document.getElementById('permissions-modal').classList.add('flex');
+            }
+        };
+
+        window.savePermissions = async function() {
+            const userId = document.getElementById('perm-user-id').value;
+            const u = systemUsers.find(u => u.id === userId);
+            if(u) { 
+                u.perms.dashboard = document.getElementById('perm-dashboard').checked; 
+                u.perms.visao = document.getElementById('perm-visao').checked; 
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', userId), u, { merge: true });
+                window.closeModal('permissions-modal'); 
+                window.showNotification('Permissões gravadas.', 'success'); 
+            }
+        };
+
+        window.openAddUserModal = function() { document.getElementById('add-user-modal').classList.add('flex'); };
+        
+        let secondaryApp = null;
+        
+        window.createNewFirebaseUser = async function() {
+            const n = document.getElementById('new-user-name').value.trim();
+            const e = document.getElementById('new-user-email').value.trim();
+            const p = document.getElementById('new-user-password').value;
+            const r = document.getElementById('new-user-role').value;
+            
+            if (!n || !e || !p) {
+                window.playSound('error');
+                return window.showNotification('Preencha todos os campos.', 'warning');
+            }
+            if (p.length < 6) {
+                window.playSound('error');
+                return window.showNotification('Senha mínima: 6 caracteres.', 'warning');
+            }
+
+            try {
+                if (!secondaryApp) {
+                    secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+                }
+                const auth2 = getAuth(secondaryApp);
+                let newUserId = String(Date.now());
+                try {
+                    const cr = await createUserWithEmailAndPassword(auth2, e, p);
+                    newUserId = cr.user.uid;
+                    await signOut(auth2);
+                } catch(authErr) { console.warn("Email/Pwd Auth falhou, criando acesso simulado.", authErr); }
+                
+                const userData = { id: newUserId, name: n, email: e, role: r, perms: { dashboard: true, visao: true } };
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'usuarios', newUserId), userData);
+                
+                window.closeModal('add-user-modal'); 
+                
+                document.getElementById('new-user-name').value = '';
+                document.getElementById('new-user-email').value = '';
+                document.getElementById('new-user-password').value = '';
+                
+                window.showNotification('Usuário registrado!', 'success');
+            } catch (err) { 
+                console.error(err);
+                window.playSound('error');
+                window.showNotification('Erro ao criar usuário.', 'error'); 
+            }
+        };
+
+        window.addNewType = function(){ 
+            const n = document.getElementById("new-type-name").value.trim(); 
+            if(n){ document.getElementById("item-type").insertBefore(new Option(n, n), document.querySelector('#item-type option[value="Outro"]')); window.showNotification("Formato adicionado!","success"); } 
+        };
+
+        window.addNewStatus = function(){ 
+            const n = document.getElementById("new-status-name").value.trim(); 
+            if(n) { 
+                const v = n.toLowerCase().replace(/\s+/g,"-"); 
+                document.getElementById("item-status").insertBefore(new Option(n, v), document.querySelector('#item-status option[value="Outro"]')); 
+                const s = document.createElement("style"); s.textContent = `.status-${v} { background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }`; 
+                document.head.appendChild(s); window.showNotification("Status criado!","success");
+            }
+        };
+
+        // --- MIGRAR DADOS DA PLANILHA ---
+        window.importFromSheet = async function() {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+
+            // Usando o nosso Modal Seguro
+            window.showConfirm("Deseja importar os dados da planilha antiga para o Firebase? Isso pode demorar alguns segundos.", async () => {
+                
+                window.showNotification("Baixando dados da planilha, aguarde...", "warning");
+                const OLD_API_URL = 'https://script.google.com/macros/s/AKfycbxbPuIfQOpOfB9XnHDnBc-PGmafC6v5XRzfqKpCuqDEdIg6ptKoc8EHb852DnvtuFc_HQ/exec';
+                
+                try {
+                    const response = await fetch(OLD_API_URL);
+                    if (!response.ok) throw new Error("Falha na rede");
+                    const data = await response.json();
+                    
+                    if (data && data.items && data.items.length > 0) {
+                        window.showNotification("Gravando no Firebase...", "warning");
+                        let count = 0;
+                        
+                        for (const item of data.items) {
+                            const docId = String(item.id || Date.now() + count);
+                            const itemData = { 
+                                id: docId, 
+                                title: item.title || '', 
+                                link: item.link || '', 
+                                type: item.type || 'Documento', 
+                                responsible: item.responsible || 'N/A', 
+                                status: item.status || 'requested', 
+                                deliveryDate: item.deliveryDate || new Date().toISOString().split('T')[0],
+                                createdAt: item.createdAt || new Date().toISOString()
+                            };
+                            
+                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materiais', docId), itemData, { merge: true });
+                            count++;
+                        }
+                        
+                        window.showNotification(`${count} materiais importados com sucesso!`, "success");
+                        window.switchPage('visao-geral');
+                    } else {
+                        window.showNotification("A planilha antiga está vazia.", "warning");
+                    }
+                } catch (error) {
+                    console.error("Erro na importação:", error);
+                    window.showNotification("Erro ao acessar a planilha antiga. Verifique sua conexão.", "error");
+                }
+            });
+        };
+
+        window.formatDate = function(d){ return d ? new Date(d.includes("T") ? d : d+"T00:00:00").toLocaleDateString("pt-BR") : "N/A"; };
+        
+        window.toggleDarkMode = function(){ 
+            document.body.classList.toggle("dark"); 
+            localStorage.setItem("darkMode", document.body.classList.contains("dark")); 
+            if(performanceChart) { 
+                performanceChart.destroy(); 
+                window.initPerformanceChart(); 
+            } 
+        };
+        
+        function checkDarkMode(){ if(localStorage.getItem("darkMode") === "true"){ document.body.classList.add("dark"); } }
+        function setupTabNavigation(){ document.querySelectorAll(".tab-button").forEach(t => t.addEventListener("click", () => { document.querySelectorAll(".tab-button").forEach(x => x.classList.remove("active")); t.classList.add("active"); window.updateUIForTab(t.dataset.tab); })); }
+        window.closeModal = function(id){ document.getElementById(id).classList.remove("flex"); };
+        window.toggleOtherInput = function(f, force){ const o = document.getElementById(`item-${f}-other`); const s = force || document.getElementById(`item-${f}`).value === "Outro"; o.style.display = s ? "block" : "none"; o.required = s; };
+        
+        window.showNotification = function(m, t = "success"){ 
+            const el = document.getElementById("notification"); 
+            el.className = `notification ${t} show`; document.getElementById("notification-message").textContent = m; 
+            setTimeout(() => el.classList.remove("show"), 4000); 
+        };
+        
+        window.uploadLogoFromUrl = async function() { 
+            const url = document.getElementById("logo-url-input").value.trim(); 
+            if(url) { 
+                const user = auth.currentUser;
+                const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+                if (uConf && uConf.role !== 'admin') return window.showNotification("Apenas administradores podem mudar a logo.", "error");
+
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'configuracoes', 'branding'), { logoUrl: url }, { merge: true });
+                    document.getElementById("logo-preview").src = url; 
+                    document.getElementById("logo-login").src = url;
+                    localStorage.setItem("ibvetLogo", url); 
+                    window.showNotification("Logo atualizada para todos os usuários!", "success");
+                    document.getElementById("logo-url-input").value = ''; 
+                } catch (e) {
+                    console.error(e);
+                    window.showNotification("Erro ao salvar no banco de dados.", "error");
+                }
+            } 
+        };
+
+        function loadSavedLogo() {
+            const savedLogo = localStorage.getItem("ibvetLogo");
+            if (savedLogo) {
+                document.getElementById("logo-login").src = savedLogo;
+                document.getElementById("logo-preview").src = savedLogo;
+            }
+        }
+        loadSavedLogo();
+    </script>
+</body>
+</html>
