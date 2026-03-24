@@ -715,6 +715,111 @@
         </div>
     </div>
 
+    <!-- Template Oculto para Exportação PDF Idêntica à Referência -->
+    <div id="pdf-export-template" style="position: absolute; left: -9999px; top: 0; width: 1200px; height: 1690px; background: #f8fafc; padding: 60px; font-family: 'Inter', sans-serif; z-index: -10;">
+        
+        <!-- Cabeçalho -->
+        <div class="flex items-end gap-6 border-b border-slate-300 pb-4 mb-4">
+            <h1 class="text-6xl font-bold text-slate-500 tracking-tight" id="pdf-logo-text">IBVET</h1>
+            <h2 class="text-4xl font-bold text-slate-800 mb-1" id="pdf-main-title">ANÁLISE DE PRODUÇÃO ANUAL (2025)</h2>
+        </div>
+        <div class="flex justify-between text-base text-slate-600 mb-10 font-medium px-2">
+            <span class="uppercase tracking-widest text-slate-800">RELATÓRIO OPERACIONAL</span>
+            <span>DATA: <span id="pdf-date"></span></span>
+            <span>Gerado por: <span id="pdf-user"></span></span>
+        </div>
+
+        <!-- Cards (4 colunas) -->
+        <div class="grid grid-cols-4 gap-6 mb-10">
+            <!-- Finalizados -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-center gap-6">
+                <div class="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center text-white text-4xl shadow-md"><i class="fas fa-check-circle"></i></div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-slate-800" id="pdf-count-delivered">0</div>
+                    <div class="text-sm font-bold text-slate-800 uppercase tracking-wide mt-1">Finalizados</div>
+                </div>
+            </div>
+            <!-- Em Execução -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-center gap-6">
+                <div class="w-20 h-20 rounded-2xl bg-orange-500 flex items-center justify-center text-white text-4xl shadow-md"><i class="fas fa-history"></i></div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-slate-800" id="pdf-count-production">0</div>
+                    <div class="text-sm font-bold text-slate-800 uppercase tracking-wide mt-1">Em Execução</div>
+                </div>
+            </div>
+            <!-- Aguardando Início -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-center gap-6">
+                <div class="w-20 h-20 rounded-2xl bg-amber-400 flex items-center justify-center text-white text-4xl shadow-md"><i class="fas fa-hourglass-half"></i></div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-slate-800" id="pdf-count-requested">0</div>
+                    <div class="text-sm font-bold text-slate-800 uppercase tracking-wide leading-tight mt-1">Aguardando<br>Início</div>
+                </div>
+            </div>
+            <!-- Total -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-center gap-6">
+                <div class="w-20 h-20 rounded-2xl bg-blue-500 flex items-center justify-center text-white text-4xl shadow-md"><i class="fas fa-chart-bar"></i></div>
+                <div class="text-center">
+                    <div class="text-5xl font-bold text-slate-800" id="pdf-count-total">0</div>
+                    <div class="text-sm font-bold text-slate-800 uppercase tracking-wide mt-1">Total</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container Gráficos -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 flex gap-10 mb-10 h-[700px]">
+            
+            <!-- Esquerda: Gráfico de Pizza -->
+            <div class="w-1/3 flex flex-col justify-center h-full">
+                <div class="relative w-full aspect-square mb-8">
+                    <canvas id="pdf-donut-chart"></canvas>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span class="text-6xl font-bold text-slate-700" id="pdf-donut-total">0</span>
+                    </div>
+                </div>
+                <div id="pdf-donut-legend" class="flex flex-col gap-3"></div>
+            </div>
+            
+            <!-- Direita: Gráfico de Linha -->
+            <div class="w-2/3 flex flex-col h-full">
+                <div class="text-center mb-6 relative">
+                    <h3 class="text-3xl font-bold text-slate-800">Produção Mensal de Tarefas</h3>
+                </div>
+                <div class="flex-1 w-full relative">
+                    <canvas id="pdf-line-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Título Insights -->
+        <div class="text-center mb-8">
+            <h3 class="text-2xl font-bold text-slate-800 uppercase tracking-widest">Insights da Operação</h3>
+        </div>
+
+        <!-- Insights -->
+        <div class="grid grid-cols-2 gap-8">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                    <div class="text-6xl text-amber-400"><i class="fas fa-lightbulb"></i></div>
+                    <div>
+                        <div class="text-lg font-bold text-slate-800 mb-1">Mês de Maior Demanda:</div>
+                        <div class="text-2xl text-slate-700" id="pdf-insight-month">-</div>
+                    </div>
+                </div>
+                <div class="flex items-end gap-1.5 h-16 w-32 border-b border-slate-200" id="pdf-mini-chart-month"></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                    <div class="text-6xl text-orange-400"><i class="fas fa-palette"></i></div>
+                    <div>
+                        <div class="text-lg font-bold text-slate-800 mb-1">Formato Mais Solicitado:</div>
+                        <div class="text-2xl text-slate-700" id="pdf-insight-format">-</div>
+                    </div>
+                </div>
+                <div class="flex items-end gap-1.5 h-16 w-32 border-b border-slate-200" id="pdf-mini-chart-format"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Áudios -->
     <audio id="audio-success" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
     <audio id="audio-error" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg" preload="auto"></audio>
@@ -1202,92 +1307,171 @@
             return { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color }, ticks: { color: isD ? "#94a3b8" : "#64748b" } }, x: { grid: { display: false }, ticks: { color: isD ? "#94a3b8" : "#64748b" } } } };
         };
 
+        // EXPORTAÇÃO PDF IDÊNTICA À REFERÊNCIA GRÁFICA
         window.generatePDF = async function() {
-            window.showNotification("Gerando PDF...", "warning");
+            window.showNotification("Montando relatório visual. Aguarde alguns segundos...", "warning");
             
             if(!document.getElementById('page-dashboard').classList.contains('active')) {
                 window.switchPage('dashboard');
             }
-            window.updateChartData('all');
-            await new Promise(r => setTimeout(r, 800));
             
+            const currentYear = currentSelectedYear;
+            const yearlyItems = allContentItems.filter(i => new Date(i.deliveryDate + "T12:00:00").getFullYear() === currentYear);
+            
+            const delivered = yearlyItems.filter(i => i.status === 'delivered').length;
+            const production = yearlyItems.filter(i => i.status === 'production').length;
+            const requested = yearlyItems.filter(i => i.status === 'requested').length;
+            const pending = yearlyItems.filter(i => i.status === 'pending').length;
+            const total = delivered + production + requested + pending;
+
+            // 1. Populando Textos do Header e Cards
+            document.getElementById('pdf-main-title').textContent = `ANÁLISE DE PRODUÇÃO ANUAL (${currentYear})`;
+            document.getElementById('pdf-date').textContent = new Date().toLocaleDateString("pt-BR");
+            
+            const userEmail = auth.currentUser ? (auth.currentUser.email || `usuario-${auth.currentUser.uid.substring(0,5)}@sistema.com`) : 'admin@ibvet.com';
+            document.getElementById('pdf-user').textContent = userEmail;
+            
+            document.getElementById('pdf-count-delivered').textContent = delivered;
+            document.getElementById('pdf-count-production').textContent = production;
+            document.getElementById('pdf-count-requested').textContent = requested;
+            document.getElementById('pdf-count-total').textContent = total;
+            document.getElementById('pdf-donut-total').textContent = total;
+
+            // 2. Preparando Dados para os Gráficos
+            const monthCounts = Array(12).fill(0);
+            yearlyItems.forEach(i => { if(i.status === 'delivered') monthCounts[new Date(i.deliveryDate + "T12:00:00").getMonth()]++; });
+
+            let typeCounts = {};
+            yearlyItems.forEach(i => typeCounts[i.type] = (typeCounts[i.type] || 0) + 1);
+            
+            // Ordena os formatos do mais solicitado para o menos solicitado para a legenda ficar bonita
+            const formatLabels = Object.keys(typeCounts).sort((a,b) => typeCounts[b] - typeCounts[a]);
+            const formatData = formatLabels.map(label => typeCounts[label]);
+            
+            // Paleta de Cores Fiel à Imagem
+            const bgColors = ['#3b82f6', '#f97316', '#ef4444', '#22c55e', '#a855f7', '#6366f1', '#06b6d4', '#eab308', '#ec4899'];
+
+            // 3. Montando Legenda Customizada do Gráfico de Pizza
+            let legendHTML = '';
+            formatLabels.forEach((label, idx) => {
+                const color = bgColors[idx % bgColors.length];
+                let icon = 'fa-file';
+                if(label === 'Video') icon = 'fa-video';
+                if(label === 'Arte') icon = 'fa-palette';
+                if(label === 'Documento') icon = 'fa-file-alt';
+                if(label === 'Apresentação') icon = 'fa-chalkboard-teacher';
+                if(label.includes('E-mail') || label.includes('Email')) icon = 'fa-envelope-open-text';
+                
+                legendHTML += `
+                    <div class="flex items-center gap-3 text-lg font-bold text-slate-800">
+                        <span style="color:${color}; font-size: 1.5rem; width: 30px; text-align: center;">
+                            <i class="fas ${icon}"></i>
+                        </span> 
+                        ${label}
+                    </div>`;
+            });
+            document.getElementById('pdf-donut-legend').innerHTML = legendHTML || '<p class="text-slate-500 italic">Sem registros</p>';
+
+            // 4. Renderizando Gráfico de Pizza (Chart.js)
+            const ctxDonut = document.getElementById('pdf-donut-chart').getContext('2d');
+            if(window.pdfDonutChart) window.pdfDonutChart.destroy();
+            window.pdfDonutChart = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: { labels: formatLabels, datasets: [{ data: formatData, backgroundColor: bgColors, borderWidth: 0 }] },
+                options: { cutout: '65%', animation: false, plugins: { legend: { display: false } } }
+            });
+
+            // 5. Renderizando Gráfico de Linha (Chart.js)
+            const ctxLine = document.getElementById('pdf-line-chart').getContext('2d');
+            if(window.pdfLineChart) window.pdfLineChart.destroy();
+            window.pdfLineChart = new Chart(ctxLine, {
+                type: 'line',
+                data: { 
+                    labels: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
+                    datasets: [{ 
+                        data: monthCounts, 
+                        borderColor: "#64748b",
+                        backgroundColor: "transparent",
+                        borderWidth: 4, 
+                        pointBackgroundColor: "#ffffff",
+                        pointBorderColor: "#64748b",
+                        pointBorderWidth: 3,
+                        pointRadius: 6,
+                        tension: 0.4
+                    }] 
+                },
+                options: { 
+                    animation: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: "#e2e8f0", lineWidth: 2 }, ticks: { font: { size: 16 }, color: "#64748b" } }, 
+                        x: { grid: { display: true, color: "#e2e8f0", lineWidth: 2 }, ticks: { font: { size: 16 }, color: "#64748b" } } 
+                    } 
+                }
+            });
+
+            // 6. Configurando Insights (Mês de Maior Demanda & Formato Mais Solicitado)
+            let maxMonth = "N/A"; let maxCount = 0; let maxMonthIdx = 0;
+            if (Math.max(...monthCounts) > 0) {
+                const mNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                maxMonthIdx = monthCounts.indexOf(Math.max(...monthCounts));
+                maxMonth = mNames[maxMonthIdx];
+                maxCount = monthCounts[maxMonthIdx];
+            }
+            document.getElementById('pdf-insight-month').innerHTML = `<span class="font-bold text-slate-800">${maxMonth}</span> <br><span class="text-xl">(${maxCount} solicitações)</span>`;
+
+            let mostReq = "N/A"; let mostReqCount = 0; let maxFormatIdx = 0;
+            if(formatLabels.length > 0) {
+                mostReq = formatLabels[0]; // O Array já foi ordenado do maior pro menor
+                mostReqCount = typeCounts[mostReq];
+                maxFormatIdx = 0; 
+            }
+            document.getElementById('pdf-insight-format').innerHTML = `<span class="font-bold text-slate-800">${mostReq}</span> <br><span class="text-xl">(${mostReqCount} ocorrências)</span>`;
+
+            // 7. Função para Construir os Mini-Gráficos em CSS
+            const buildMiniBars = (dataArr, maxIdx, maxColor, normalColor) => {
+                if(dataArr.length === 0 || Math.max(...dataArr) === 0) return '';
+                const maxVal = Math.max(...dataArr);
+                return dataArr.map((v, i) => {
+                    const height = maxVal === 0 ? 0 : (v / maxVal) * 100;
+                    const color = i === maxIdx ? maxColor : normalColor;
+                    return `<div class="flex-1 rounded-t ${color}" style="height: ${height}%"></div>`;
+                }).join('');
+            };
+            
+            // Remove os zeros à esquerda e à direita do array do ano para o mini gráfico ficar bonito e centralizado
+            let startIdx = monthCounts.findIndex(v => v > 0);
+            let endIdx = monthCounts.findLastIndex(v => v > 0);
+            if (startIdx === -1) { startIdx = 0; endIdx = 11; }
+            const trimmedMonthCounts = monthCounts.slice(Math.max(0, startIdx - 1), Math.min(12, endIdx + 2));
+            const newMaxMonthIdx = trimmedMonthCounts.indexOf(Math.max(...trimmedMonthCounts));
+
+            document.getElementById('pdf-mini-chart-month').innerHTML = buildMiniBars(trimmedMonthCounts, newMaxMonthIdx, 'bg-amber-400', 'bg-blue-300');
+            document.getElementById('pdf-mini-chart-format').innerHTML = buildMiniBars(formatData.slice(0, 5), maxFormatIdx, 'bg-orange-400', 'bg-blue-300'); // Mostra top 5
+
+            // Esperar os gráficos terminarem de renderizar na tela
+            await new Promise(r => setTimeout(r, 600));
+
+            // 8. Print e Geração Final do PDF via html2canvas
+            const templateNode = document.getElementById('pdf-export-template');
             try {
-                const chartNode = document.getElementById('performanceChart');
-                const chartCanvas = await html2canvas(chartNode, { backgroundColor: '#ffffff', scale: 2 });
+                // Tira a "foto" da página invisível
+                const canvas = await html2canvas(templateNode, { scale: 2, useCORS: true, backgroundColor: '#f8fafc' });
+                const imgData = canvas.toDataURL('image/png');
+                
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                 
-                doc.setFont("helvetica");
-
-                const logoElement = document.getElementById('logo-preview');
-                try {
-                    doc.addImage(logoElement, 'PNG', 15, 12, 40, 11);
-                } catch(imgError) {
-                    console.warn("Aviso: Logo não injetada.");
-                    doc.setFontSize(18);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(0, 0, 0);
-                    doc.text("Logo", 15, 20);
-                }
+                const pdfWidth = doc.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 
-                doc.setFontSize(16);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(30, 41, 59);
-                doc.text("Relatório Operacional", 195, 20, { align: 'right' });
-                
-                const userEmail = auth.currentUser ? (auth.currentUser.email || `usuario-${auth.currentUser.uid.substring(0,5)}@sistema.com`) : '';
-                const dataAtual = new Date().toLocaleDateString("pt-BR");
-                
-                doc.setFontSize(9);
-                doc.setTextColor(100, 116, 139);
-                doc.text(`Gerado por: ${userEmail}`, 15, 30);
-                doc.text(`Data: ${dataAtual}`, 195, 30, { align: 'right' });
-                
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(30, 41, 59);
-                doc.text(`Análise de Produção Anual (${currentSelectedYear})`, 15, 45);
-                
-                doc.addImage(chartCanvas.toDataURL('image/png'), 'PNG', 15, 50, 180, 85);
-                
-                const yearlyItems = allContentItems.filter(i => new Date(i.deliveryDate + "T12:00:00").getFullYear() === currentSelectedYear);
-                const delivered = yearlyItems.filter(i => i.status === 'delivered').length;
-                const production = yearlyItems.filter(i => i.status === 'production').length;
-                const requested = yearlyItems.filter(i => i.status === 'requested').length;
-                const pending = yearlyItems.filter(i => i.status === 'pending').length;
-                const total = delivered + production + requested + pending;
-
-                const tableBody = [
-                    ['Finalizados', delivered],
-                    ['Em Execução', production],
-                    ['Aguardando Início', requested]
-                ];
-                if(pending > 0) tableBody.push(['Com Pendência', pending]);
-                tableBody.push(['TOTAL', total]);
-
-                doc.autoTable({
-                    startY: 145,
-                    body: tableBody,
-                    theme: 'grid',
-                    styles: { font: 'helvetica', fontSize: 10, textColor: [60, 60, 60], lineColor: [200, 200, 200], lineWidth: 0.1, cellPadding: 4 },
-                    columnStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 40 } },
-                    didParseCell: function(data) {
-                        if (data.row.index === tableBody.length - 1) { 
-                            data.cell.styles.fontStyle = 'bold';
-                            data.cell.styles.textColor = [30, 30, 30];
-                        }
-                    },
-                    margin: { left: 15, right: 15 }
-                });
-
-                doc.save(`Relatorio_Operacional_${currentSelectedYear}.pdf`);
-                window.showNotification("PDF baixado com sucesso!", "success");
-            } catch (e) { 
+                doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                doc.save(`IBVET_Relatorio_${currentYear}.pdf`);
+                window.showNotification("Relatório visual baixado com sucesso!", "success");
+            } catch(e) {
                 console.error(e);
-                window.showNotification("Erro ao gerar o PDF.", "error"); 
+                window.showNotification("Erro ao gerar o PDF visual.", "error");
             }
-            
-            window.switchPage(document.querySelector('#sidebar-nav .nav-item.active').dataset.page);
         };
 
         window.duplicateItem = function(itemId) {
