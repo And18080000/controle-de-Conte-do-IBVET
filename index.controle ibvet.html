@@ -461,6 +461,7 @@
                                         <option value="Apresentação">Apresentação / Slides</option>
                                         <option value="Documento">Documento / PDF</option>
                                         <option value="Exercício">Lista de Exercícios</option>
+                                        <option value="Arte">Arte / Design</option>
                                         <option value="Outro">Especificar outro...</option>
                                     </select>
                                     <input type="text" id="item-type-other" class="form-input other-input" placeholder="Especifique o formato">
@@ -1063,12 +1064,23 @@
                 const sText = statusMap[item.status] || item.status;
                 const sClass = item.status ? `status-${item.status}` : "bg-slate-200";
                 
-                let actions = isAdmin ? `<button onclick="editItem('${item.id}')" class="text-slate-400 hover:text-blue-600 px-2"><i class="fas fa-edit"></i></button><button onclick="deleteItem('${item.id}')" class="text-slate-400 hover:text-red-500 px-2"><i class="fas fa-trash-alt"></i></button>` : `<span class="text-xs text-slate-400">Apenas leitura</span>`;
+                let actions = isAdmin ? `<button onclick="duplicateItem('${item.id}')" class="text-slate-400 hover:text-emerald-500 px-2" title="Duplicar Registro"><i class="fas fa-copy"></i></button><button onclick="editItem('${item.id}')" class="text-slate-400 hover:text-blue-600 px-2" title="Editar"><i class="fas fa-edit"></i></button><button onclick="deleteItem('${item.id}')" class="text-slate-400 hover:text-red-500 px-2" title="Excluir"><i class="fas fa-trash-alt"></i></button>` : `<span class="text-xs text-slate-400">Apenas leitura</span>`;
                 
                 const formatId = String(item.id).length > 5 ? String(item.id).substring(item.id.length - 4) : String(item.id).padStart(3,'0');
                 
+                // Configuração das Cores Dinâmicas para os Formatos (Light e Dark Mode)
+                const typeColors = {
+                    'Video': 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800/50',
+                    'Apresentação': 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50',
+                    'Documento': 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50',
+                    'Exercício': 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50',
+                    'Arte': 'bg-fuchsia-50 text-fuchsia-600 dark:bg-fuchsia-900/20 dark:text-fuchsia-400 border border-fuchsia-200 dark:border-fuchsia-800/50'
+                };
+                // Caso seja um formato customizado, aplica o estilo neutro compatível com Dark Mode
+                const tClass = typeColors[item.type] || 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600';
+                
                 const row = tbody.insertRow();
-                row.innerHTML = `<td class="font-mono text-slate-400">#${formatId}</td><td><div class="font-medium truncate max-w-xs">${item.title}</div>${item.link ? `<a href="${item.link}" target="_blank" class="text-xs text-blue-500 underline">Ver anexo</a>` : ''}</td><td><span class="px-2 py-0.5 bg-slate-100 rounded text-xs">${item.type}</span></td><td class="text-sm">${item.responsible.split('@')[0]}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${sClass}">${sText}</span></td><td class="text-sm">${window.formatDate(item.deliveryDate)}</td><td class="text-right">${actions}</td>`;
+                row.innerHTML = `<td class="font-mono text-slate-400">#${formatId}</td><td><div class="font-medium truncate max-w-xs">${item.title}</div>${item.link ? `<a href="${item.link}" target="_blank" class="text-xs text-blue-500 underline">Ver anexo</a>` : ''}</td><td><span class="px-2 py-0.5 rounded text-xs font-medium ${tClass}">${item.type}</span></td><td class="text-sm">${item.responsible.split('@')[0]}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${sClass}">${sText}</span></td><td class="text-sm">${window.formatDate(item.deliveryDate)}</td><td class="text-right">${actions}</td>`;
             });
         };
         
@@ -1204,6 +1216,43 @@
             }
             
             window.switchPage(document.querySelector('#sidebar-nav .nav-item.active').dataset.page);
+        };
+
+        window.duplicateItem = function(itemId) {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+            
+            const item = allContentItems.find(i => String(i.id) === String(itemId));
+            if (item) {
+                // Ao deixar o ID vazio, o sistema entenderá que é um novo registro na hora de salvar
+                document.getElementById("item-id-hidden").value = ""; 
+                document.getElementById("item-title").value = item.title + " (Cópia)";
+                document.getElementById("item-link").value = item.link || "";
+                document.getElementById("item-responsible").value = item.responsible;
+                document.getElementById("item-delivery-date").value = item.deliveryDate;
+                const setV = (f, v) => {
+                    const el = document.getElementById(`item-${f}`);
+                    if ([...el.options].some(o => o.value === v)) { el.value = v; window.toggleOtherInput(f, false); }
+                    else { el.value = "Outro"; document.getElementById(`item-${f}-other`).value = v || ""; window.toggleOtherInput(f, true); }
+                };
+                setV("type", item.type); setV("status", item.status);
+                document.getElementById("form-page-title").textContent = 'Duplicar Material';
+                window.switchPage('registro');
+                window.showNotification("Registro copiado. Faça os ajustes necessários e salve.", "warning");
+            }
+        };
+        
+        window.deleteItem = async function(itemId) {
+            const user = auth.currentUser;
+            const uConf = systemUsers.find(u => u.id === user?.uid || u.email === user?.email);
+            if (uConf && uConf.role !== 'admin') return window.showNotification("Restrito a administradores.", "error");
+            
+            // Usando nosso Modal Seguro
+            window.showConfirm("Deseja excluir este item do banco de dados?", async () => {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materiais', String(itemId)));
+                window.showNotification("Removido do Firebase.", "success");
+            });
         };
 
         function renderUsersList() {
