@@ -414,6 +414,25 @@
                                 <button id="btn-novo-registro" class="btn btn-primary shadow-sm text-xs" onclick="openRegistroPage()"><i class="fas fa-plus"></i> Novo</button>
                             </div>
                         </div>
+                        
+                        <!-- Barra de Pesquisa e Filtros -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3">
+                            <div class="relative flex-1">
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="search-filter" class="form-input pl-9 py-1.5 text-sm w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-600 focus:border-blue-500" placeholder="Pesquisar por Título ou ID (#000)..." oninput="applyFilters()">
+                            </div>
+                            <div class="w-full sm:w-48">
+                                <select id="type-filter" class="form-select py-1.5 text-sm w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-600" onchange="applyFilters()">
+                                    <option value="all">Todos os Formatos</option>
+                                    <option value="Video">Vídeo / Aula</option>
+                                    <option value="Apresentação">Apresentação / Slides</option>
+                                    <option value="Documento">Documento / PDF</option>
+                                    <option value="Exercício">Lista de Exercícios</option>
+                                    <option value="Arte">Arte / Design</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="w-full text-left">
                                 <thead>
@@ -832,7 +851,6 @@
                 }
                 
                 window.updateUIForTab(document.querySelector('.tab-button.active').dataset.tab);
-                window.updateSummaryCounts(allContentItems);
             }, (error) => console.error(error));
 
             // Escutador em Tempo Real - LOGO E CONFIGURAÇÕES
@@ -944,7 +962,13 @@
             document.getElementById("item-type").value = "Video";
             document.getElementById("item-responsible").value = userEmail;
             document.getElementById("item-status").value = "requested";
-            document.getElementById("item-delivery-date").valueAsDate = new Date();
+            
+            // Corrige o fuso horário para preencher a data de hoje perfeitamente no form
+            const today = new Date();
+            const offset = today.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(today - offset)).toISOString().split('T')[0];
+            document.getElementById("item-delivery-date").value = localISOTime;
+
             window.toggleOtherInput("type", false); window.toggleOtherInput("status", false);
             document.getElementById("form-page-title").textContent = 'Novo Registro de Material';
             window.switchPage('registro');
@@ -1014,36 +1038,78 @@
             });
         };
 
+        window.applyFilters = function() {
+            const activeTabButton = document.querySelector('.tab-button.active');
+            if (activeTabButton) {
+                window.updateUIForTab(activeTabButton.dataset.tab);
+            }
+        };
+
         window.changeYear = function() {
             currentSelectedYear = parseInt(document.getElementById('year-filter').value);
             document.getElementById('dashboard-year-title').textContent = `Entregas ${currentSelectedYear}`;
-            window.updateUIForTab(document.querySelector('.tab-button.active').dataset.tab);
+            window.applyFilters();
         };
 
         window.updateUIForTab = function(tab) {
             const currentYear = currentSelectedYear;
-            const monthIndex = parseInt(tab);
-            let filteredItems = [];
+            const monthIndex = tab === 'all' ? null : parseInt(tab);
+            
+            // 1. Filtragem Inicial por Data (Mês e Ano)
+            let filteredItems = allContentItems.filter(item => {
+                // Adiciona T12:00:00 para forçar meio-dia e evitar erro de recuo de mês por fuso horário
+                const d = new Date(item.deliveryDate + "T12:00:00");
+                if (d.getFullYear() !== currentYear) return false;
+                if (monthIndex !== null && d.getMonth() !== monthIndex) return false;
+                return true;
+            });
+
+            // Configurar Título e Resumo Baseado no Mês
             const tableTitle = document.getElementById('table-title');
             const monthlySummary = document.getElementById('monthly-summary');
 
             if (tab === 'all') {
-                filteredItems = allContentItems.filter(item => new Date(item.deliveryDate).getFullYear() === currentYear);
                 tableTitle.textContent = `Acervo de Materiais (${currentYear})`;
                 monthlySummary.style.display = 'none';
             } else {
                 const monthName = new Date(currentYear, monthIndex, 1).toLocaleString('pt-BR', { month: 'long' });
                 tableTitle.textContent = `Materiais de ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`;
-                filteredItems = allContentItems.filter(item => {
-                    const d = new Date(item.deliveryDate); return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
-                });
                 const deliv = filteredItems.filter(item => item.status === 'delivered').length;
                 monthlySummary.style.display = 'block';
                 monthlySummary.textContent = `${deliv} finalizados.`;
             }
-            document.getElementById('yearly-total-count').textContent = allContentItems.filter(i => i.status === 'delivered' && new Date(i.deliveryDate).getFullYear() === currentYear).length;
+            
+            // Atualiza os contadores gerais do ano no Dashboard (independente da busca)
+            document.getElementById('yearly-total-count').textContent = allContentItems.filter(i => i.status === 'delivered' && new Date(i.deliveryDate + "T12:00:00").getFullYear() === currentYear).length;
+            window.updateSummaryCounts(allContentItems); // Cards do topo também não sofrem com o filtro de texto
+            
+            // 2. Filtragem Adicional: Texto (Busca) e Categoria (Dropdown)
+            const searchInput = document.getElementById('search-filter');
+            const typeInput = document.getElementById('type-filter');
+            
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const typeFilter = typeInput ? typeInput.value : 'all';
+
+            // Aplica filtro de texto se houver (procura no Título ou no ID numérico)
+            if (searchTerm) {
+                filteredItems = filteredItems.filter(item => {
+                    const idStr = String(item.id).toLowerCase();
+                    const formatId = idStr.length > 5 ? idStr.substring(idStr.length - 4) : idStr.padStart(3, '0');
+                    const searchId = searchTerm.replace('#', ''); // Permite buscar com ou sem a hashtag
+                    
+                    return item.title.toLowerCase().includes(searchTerm) || 
+                           idStr.includes(searchId) || 
+                           formatId.includes(searchId);
+                });
+            }
+
+            // Aplica filtro de categoria se não for 'all'
+            if (typeFilter !== 'all') {
+                filteredItems = filteredItems.filter(item => item.type === typeFilter);
+            }
+
             window.renderTable(filteredItems);
-            window.updateSummaryCounts(filteredItems);
+            
             if (performanceChart) window.updateChartData(tab);
         };
 
@@ -1055,7 +1121,7 @@
             const isAdmin = uConf && uConf.role === 'admin';
             
             if (!items || items.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500">Vazio.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500">Nenhum resultado encontrado para o filtro atual.</td></tr>';
                 return;
             }
             
@@ -1096,14 +1162,20 @@
             const currentYear = currentSelectedYear;
             if (activeTab === 'all') {
                 const data = Array(12).fill(0);
-                allContentItems.forEach(i => { if(i.status === 'delivered' && new Date(i.deliveryDate).getFullYear() === currentYear) data[new Date(i.deliveryDate).getMonth()]++; });
+                allContentItems.forEach(i => { 
+                    const d = new Date(i.deliveryDate + "T12:00:00");
+                    if(i.status === 'delivered' && d.getFullYear() === currentYear) data[d.getMonth()]++; 
+                });
                 performanceChart.data.labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                 performanceChart.data.datasets[0].data = data;
             } else {
                 const mIdx = parseInt(activeTab);
                 const days = new Date(currentYear, mIdx + 1, 0).getDate();
                 const data = Array(days).fill(0);
-                allContentItems.forEach(i => { const d = new Date(i.deliveryDate); if(i.status === 'delivered' && d.getFullYear() === currentYear && d.getMonth() === mIdx) data[d.getDate() - 1]++; });
+                allContentItems.forEach(i => { 
+                    const d = new Date(i.deliveryDate + "T12:00:00"); 
+                    if(i.status === 'delivered' && d.getFullYear() === currentYear && d.getMonth() === mIdx) data[d.getDate() - 1]++; 
+                });
                 performanceChart.data.labels = Array.from({ length: days }, (_, i) => String(i + 1));
                 performanceChart.data.datasets[0].data = data;
             }
@@ -1178,7 +1250,7 @@
                 
                 doc.addImage(chartCanvas.toDataURL('image/png'), 'PNG', 15, 50, 180, 85);
                 
-                const yearlyItems = allContentItems.filter(i => new Date(i.deliveryDate).getFullYear() === currentSelectedYear);
+                const yearlyItems = allContentItems.filter(i => new Date(i.deliveryDate + "T12:00:00").getFullYear() === currentSelectedYear);
                 const delivered = yearlyItems.filter(i => i.status === 'delivered').length;
                 const production = yearlyItems.filter(i => i.status === 'production').length;
                 const requested = yearlyItems.filter(i => i.status === 'requested').length;
@@ -1387,7 +1459,12 @@
 
         window.addNewType = function(){ 
             const n = document.getElementById("new-type-name").value.trim(); 
-            if(n){ document.getElementById("item-type").insertBefore(new Option(n, n), document.querySelector('#item-type option[value="Outro"]')); window.showNotification("Formato adicionado!","success"); } 
+            if(n){ 
+                document.getElementById("item-type").insertBefore(new Option(n, n), document.querySelector('#item-type option[value="Outro"]')); 
+                // Também adiciona no novo filtro da Visão Geral
+                document.getElementById("type-filter").appendChild(new Option(n, n));
+                window.showNotification("Formato adicionado!","success"); 
+            } 
         };
 
         window.addNewStatus = function(){ 
@@ -1450,7 +1527,12 @@
             });
         };
 
-        window.formatDate = function(d){ return d ? new Date(d.includes("T") ? d : d+"T00:00:00").toLocaleDateString("pt-BR") : "N/A"; };
+        window.formatDate = function(d) { 
+            if (!d) return "N/A";
+            // Força fixar o horário no meio do dia para a data não oscilar e mudar de mês
+            const dateStr = d.includes("T") ? d : d + "T12:00:00"; 
+            return new Date(dateStr).toLocaleDateString("pt-BR"); 
+        };
         
         window.toggleDarkMode = function(){ 
             document.body.classList.toggle("dark"); 
